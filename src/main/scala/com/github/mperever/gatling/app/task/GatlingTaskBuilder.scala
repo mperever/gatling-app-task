@@ -1,13 +1,16 @@
 package com.github.mperever.gatling.app.task
 
+import com.typesafe.config.{Config, ConfigRenderOptions}
+
+import io.gatling.app.ConfigOverrides
+import io.gatling.core.config.GatlingPropertiesBuilder
+import io.gatling.core.ConfigKeys.core
+import io.gatling.core.scenario.Simulation
+
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
-
-import com.typesafe.config.{Config, ConfigRenderOptions}
-import io.gatling.core.config.GatlingPropertiesBuilder
-import io.gatling.core.scenario.Simulation
 
 object GatlingTaskBuilder {
 
@@ -23,20 +26,32 @@ object GatlingTaskBuilder {
   }
 }
 
-class GatlingTaskBuilder( val simulationClass: Class[_ <: Simulation] ) {
+class GatlingTaskBuilder {
 
-  private var resultsDirectory: String = _
-  private var dataDirectory: String = _
-  private var configContent: String = _
-  private var configFileName: String = _
+  private var _configContent: String = _
+  private var _configFileName: String = _
+  private var _gatlingOverrides: ConfigOverrides = _
 
-  def resultsDirectory( resultsDirectory: String ): GatlingTaskBuilder = {
-    this.resultsDirectory = resultsDirectory
-    this
+  def this( simulationClass: Class[_ <: Simulation] ) {
+    this()
+    _gatlingOverrides = new GatlingPropertiesBuilder()
+      .simulationClass( simulationClass.getName )
+      .resultsDirectory( GatlingTaskBuilder.DEFAULT_RESULT_PATH )
+      .noReports
+      .mute
+      .build
   }
 
-  def dataDirectory( dataDirectory: String ): GatlingTaskBuilder = {
-    this.dataDirectory = dataDirectory
+  def this( gatlingOverrides: ConfigOverrides ) {
+    this()
+    if ( !gatlingOverrides.contains( core.SimulationClass ) ) {
+      throw new IllegalArgumentException( "simulationClass is not set in gatling config overrides" )
+    }
+    _gatlingOverrides = gatlingOverrides.clone()
+  }
+
+  def resultsDirectory( resultsDirectory: String ): GatlingTaskBuilder = {
+    _gatlingOverrides( core.directory.Results ) = resultsDirectory.asInstanceOf[_]
     this
   }
 
@@ -57,28 +72,22 @@ class GatlingTaskBuilder( val simulationClass: Class[_ <: Simulation] ) {
     * @return
     */
   def simulationConfig( config: Config, fileName: String ): GatlingTaskBuilder = {
-    this.configContent = GatlingTaskBuilder.toJson( config )
-    this.configFileName = fileName
+    _configContent = GatlingTaskBuilder.toJson( config )
+    _configFileName = fileName
     this
   }
 
   def build(): GatlingTask = {
-    if ( resultsDirectory == null ) resultsDirectory = GatlingTaskBuilder.DEFAULT_RESULT_PATH
+    val resultsDirectory: String = _gatlingOverrides( core.directory.Results ).asInstanceOf[String]
     val taskId = System.currentTimeMillis + "_" + UUID.randomUUID.toString.replace( "-", "" )
     val taskResultsDirectory = Paths.get( resultsDirectory, taskId ).toString
 
-    val gatlingProperties = new GatlingPropertiesBuilder()
-      .simulationClass( simulationClass.getName )
-      .resultsDirectory( taskResultsDirectory )
-      .noReports
-      .mute
-    if ( dataDirectory != null ) gatlingProperties.dataDirectory( dataDirectory )
-
-    if ( configContent != null && configFileName != null ) {
-      val configFilePath: Path = Paths.get( taskResultsDirectory.toString, configFileName )
-      GatlingTaskBuilder.saveConfigFile( configContent, configFilePath )
+    if ( _configContent != null && _configFileName != null ) {
+      val configFilePath: Path = Paths.get( taskResultsDirectory.toString, _configFileName )
+      GatlingTaskBuilder.saveConfigFile( _configContent, configFilePath )
     }
 
-    new GatlingTask( gatlingProperties.build )
+    _gatlingOverrides( core.directory.Results ) = taskResultsDirectory.asInstanceOf[_]
+    new GatlingTask( _gatlingOverrides )
   }
 }

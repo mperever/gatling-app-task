@@ -1,15 +1,16 @@
 package io.gatling.app
 
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.control.NonFatal
-
-import io.gatling.core.config.GatlingConfiguration
-
 import akka.actor.ActorSystem
 import ch.qos.logback.classic.LoggerContext
 import com.typesafe.scalalogging.StrictLogging
+
+import io.gatling.core.config.GatlingConfiguration
+
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
   * Object containing entry point of application.

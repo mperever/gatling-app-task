@@ -1,11 +1,11 @@
 package com.github.mperever.gatling.app.task
 
-import java.util.concurrent.Callable
-
 import io.gatling.app.{ConfigOverrides, GatlingRunner, GatlingRunResult, RunResult}
 import io.gatling.app.cli.StatusCode
 import io.gatling.core.config.GatlingPropertiesBuilder
 import io.gatling.core.scenario.Simulation
+
+import java.util.concurrent.Callable
 
 class GatlingTask extends Callable[GatlingRunResult] {
 
@@ -19,7 +19,7 @@ class GatlingTask extends Callable[GatlingRunResult] {
 
   def this( gatlingOverrides: ConfigOverrides ) {
     this()
-    _gatlingOverrides = gatlingOverrides
+    _gatlingOverrides = gatlingOverrides.clone()
   }
   
   override def call: GatlingRunResult =
