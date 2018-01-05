@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 
+import scala.collection.mutable
+
 object GatlingTaskBuilder {
 
   private val ROOT_RESULT_DIRECTORY_NAME = "results"
@@ -30,7 +32,7 @@ class GatlingTaskBuilder {
 
   private var _configContent: String = _
   private var _configFileName: String = _
-  private var _gatlingOverrides: ConfigOverrides = _
+  private var _gatlingOverrides: mutable.Map[String, Any] = _
 
   def this( simulationClass: Class[_ <: Simulation] ) {
     this()
@@ -47,11 +49,12 @@ class GatlingTaskBuilder {
     if ( !gatlingOverrides.contains( core.SimulationClass ) ) {
       throw new IllegalArgumentException( "simulationClass is not set in gatling config overrides" )
     }
-    _gatlingOverrides = gatlingOverrides.clone()
+
+    _gatlingOverrides = mutable.Map( gatlingOverrides.toMap[String, Any].toSeq:_* )
   }
 
   def resultsDirectory( resultsDirectory: String ): GatlingTaskBuilder = {
-    _gatlingOverrides( core.directory.Results ) = resultsDirectory.asInstanceOf[_]
+    _gatlingOverrides( core.directory.Results ) = resultsDirectory
     this
   }
 
@@ -87,7 +90,7 @@ class GatlingTaskBuilder {
       GatlingTaskBuilder.saveConfigFile( _configContent, configFilePath )
     }
 
-    _gatlingOverrides( core.directory.Results ) = taskResultsDirectory.asInstanceOf[_]
+    _gatlingOverrides( core.directory.Results ) = taskResultsDirectory
     new GatlingTask( _gatlingOverrides )
   }
 }
